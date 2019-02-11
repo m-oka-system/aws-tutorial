@@ -1,0 +1,8 @@
+terraform.exe
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars
+.vscode/
+*.pem
+.ignore/
