@@ -14,13 +14,14 @@ resource "aws_vpc" "vpc" {
 # Subnet
 ################################
 resource "aws_subnet" "public" {
+  count                   = "${length(var.zones)}"
   vpc_id                  = "${aws_vpc.vpc.id}"
-  cidr_block              = "${cidrsubnet(var.vpc_prefix, 8, 11)}" #10.0.11.0/24
+  cidr_block              = "${cidrsubnet(var.vpc_prefix, 8, 11 + count.index)}" #10.0.11.0/24
   map_public_ip_on_launch = true
-  availability_zone       = "ap-northeast-1a"
+  availability_zone       = "${element(var.zones, count.index)}"
 
   tags {
-    Name = "${var.vpc_name}-public-1a"
+    Name = "${var.vpc_name}-public-${substr(element(var.zones, count.index),-2,2)}"
   }
 }
 
@@ -63,7 +64,8 @@ resource "aws_route_table" "public-rt" {
 }
 
 resource "aws_route_table_association" "public-subnet-rta" {
-  subnet_id      = "${aws_subnet.public.id}"
+  count          = "${length(var.zones)}"
+  subnet_id      = "${element(aws_subnet.public.*.id, count.index)}"
   route_table_id = "${aws_route_table.public-rt.id}"
 }
 
