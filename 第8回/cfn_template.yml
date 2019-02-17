@@ -1,0 +1,283 @@
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  vpc022667473d3c09ff0:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      InstanceTenancy: default
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      Tags:
+        - Key: Name
+          Value: vpc
+  subnet0609b0d2288f46de7:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: 10.0.12.0/24
+      AvailabilityZone: ap-northeast-1c
+      VpcId: !Ref vpc022667473d3c09ff0
+      Tags:
+        - Key: Name
+          Value: vpc-public-1c
+  subnet034a740efbfea30fe:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: 10.0.21.0/24
+      AvailabilityZone: ap-northeast-1a
+      VpcId: !Ref vpc022667473d3c09ff0
+      Tags:
+        - Key: Name
+          Value: vpc-private-1a
+  subnet01d3a69b783ea45be:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: 10.0.22.0/24
+      AvailabilityZone: ap-northeast-1c
+      VpcId: !Ref vpc022667473d3c09ff0
+      Tags:
+        - Key: Name
+          Value: vpc-private-1c
+  subnet0a0ab6a1807b2a604:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: 10.0.11.0/24
+      AvailabilityZone: ap-northeast-1a
+      VpcId: !Ref vpc022667473d3c09ff0
+      Tags:
+        - Key: Name
+          Value: vpc-public-1a
+  igw031811749a4846dbe:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: vpc-igw
+  dopt2489e243:
+    Type: 'AWS::EC2::DHCPOptions'
+    Properties:
+      DomainName: ap-northeast-1.compute.internal
+      DomainNameServers:
+        - AmazonProvidedDNS
+  acl09d032d4d1e396581:
+    Type: 'AWS::EC2::NetworkAcl'
+    Properties:
+      VpcId: !Ref vpc022667473d3c09ff0
+  rtb06a441486db0492c4:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref vpc022667473d3c09ff0
+      Tags:
+        - Key: Name
+          Value: vpc-private-rt
+  rtb05491346385a99e72:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref vpc022667473d3c09ff0
+  rtb044c50a4d62277113:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref vpc022667473d3c09ff0
+      Tags:
+        - Key: Name
+          Value: vpc-public-rt
+  eip52198956:
+    Type: 'AWS::EC2::EIP'
+    DependsOn:
+      - gw1
+    Properties:
+      Domain: vpc
+  instancei03c7a9b7e8c05a429:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      DisableApiTermination: 'false'
+      InstanceInitiatedShutdownBehavior: stop
+      ImageId: ami-00a5245b4816c38e6
+      InstanceType: t2.micro
+      KeyName: my-key-pair
+      Monitoring: 'false'
+      Tags:
+        - Key: Name
+          Value: web-1
+      NetworkInterfaces:
+        - DeleteOnTermination: 'true'
+          DeviceIndex: 0
+          SubnetId: !Ref subnet0a0ab6a1807b2a604
+          PrivateIpAddresses:
+            - PrivateIpAddress: 10.0.11.245
+              Primary: 'true'
+          GroupSet:
+            - !Ref sgsshhttpfullopen
+  rdsdbinstance:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      AllocatedStorage: '20'
+      AllowMajorVersionUpgrade: 'false'
+      AutoMinorVersionUpgrade: 'true'
+      DBInstanceClass: db.t2.micro
+      Port: '3306'
+      StorageType: gp2
+      BackupRetentionPeriod: '1'
+      MasterUsername: root
+      MasterUserPassword: MyPassword
+      PreferredBackupWindow: '19:00-20:00'
+      PreferredMaintenanceWindow: 'sat:20:00-sat:21:00'
+      DBName: MyDatabase
+      Engine: mysql
+      EngineVersion: 5.7.23
+      LicenseModel: general-public-license
+      DBSubnetGroupName: !Ref dbsubnetdbinstancesubnetgp
+      VPCSecurityGroups:
+        - !Ref sgdbopen
+  dbsubnetdbinstancesubnetgp:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: Managed by Terraform
+      SubnetIds:
+        - !Ref subnet034a740efbfea30fe
+        - !Ref subnet01d3a69b783ea45be
+      Tags:
+        - Key: Name
+          Value: dbinstance-subnet-gp
+  dbpgdbinstancepg:
+    Type: 'AWS::RDS::DBParameterGroup'
+    Properties:
+      Description: Managed by Terraform
+      Family: mysql5.7
+      Parameters:
+        binlog_cache_size: '32768'
+        binlog_format: MIXED
+        default_password_lifetime: '0'
+        explicit_defaults_for_timestamp: '1'
+        gtid-mode: OFF_PERMISSIVE
+        innodb_buffer_pool_size: '{DBInstanceClassMemory*3/4}'
+  sgdbopen:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Managed by Terraform
+      VpcId: !Ref vpc022667473d3c09ff0
+      Tags:
+        - Key: Name
+          Value: db-sg
+  sgsshhttpfullopen:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Managed by Terraform
+      VpcId: !Ref vpc022667473d3c09ff0
+      Tags:
+        - Key: Name
+          Value: web-sg
+  acl1:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Egress: 'true'
+      Protocol: '-1'
+      RuleAction: allow
+      RuleNumber: '100'
+      NetworkAclId: !Ref acl09d032d4d1e396581
+  acl2:
+    Type: 'AWS::EC2::NetworkAclEntry'
+    Properties:
+      CidrBlock: 0.0.0.0/0
+      Protocol: '-1'
+      RuleAction: allow
+      RuleNumber: '100'
+      NetworkAclId: !Ref acl09d032d4d1e396581
+  subnetacl1:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref acl09d032d4d1e396581
+      SubnetId: !Ref subnet034a740efbfea30fe
+  subnetacl2:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref acl09d032d4d1e396581
+      SubnetId: !Ref subnet0609b0d2288f46de7
+  subnetacl3:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref acl09d032d4d1e396581
+      SubnetId: !Ref subnet0a0ab6a1807b2a604
+  subnetacl4:
+    Type: 'AWS::EC2::SubnetNetworkAclAssociation'
+    Properties:
+      NetworkAclId: !Ref acl09d032d4d1e396581
+      SubnetId: !Ref subnet01d3a69b783ea45be
+  gw1:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref vpc022667473d3c09ff0
+      InternetGatewayId: !Ref igw031811749a4846dbe
+  subnetroute1:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref rtb06a441486db0492c4
+      SubnetId: !Ref subnet034a740efbfea30fe
+  subnetroute2:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref rtb06a441486db0492c4
+      SubnetId: !Ref subnet01d3a69b783ea45be
+  subnetroute4:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref rtb044c50a4d62277113
+      SubnetId: !Ref subnet0a0ab6a1807b2a604
+  subnetroute5:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref rtb044c50a4d62277113
+      SubnetId: !Ref subnet0609b0d2288f46de7
+  route1:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref rtb044c50a4d62277113
+      GatewayId: !Ref igw031811749a4846dbe
+    DependsOn: gw1
+  dchpassoc1:
+    Type: 'AWS::EC2::VPCDHCPOptionsAssociation'
+    Properties:
+      VpcId: !Ref vpc022667473d3c09ff0
+      DhcpOptionsId: !Ref dopt2489e243
+  assoc1:
+    Type: 'AWS::EC2::EIPAssociation'
+    Properties:
+      AllocationId: !GetAtt 
+        - eip52198956
+        - AllocationId
+      InstanceId: !Ref instancei03c7a9b7e8c05a429
+  ingress1:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref sgdbopen
+      IpProtocol: tcp
+      FromPort: '3306'
+      ToPort: '3306'
+      SourceSecurityGroupId: !Ref sgsshhttpfullopen
+      SourceSecurityGroupOwnerId: '834829755694'
+  ingress2:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref sgsshhttpfullopen
+      IpProtocol: tcp
+      FromPort: '80'
+      ToPort: '80'
+      CidrIp: 0.0.0.0/0
+  ingress3:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !Ref sgsshhttpfullopen
+      IpProtocol: tcp
+      FromPort: '22'
+      ToPort: '22'
+      CidrIp: 0.0.0.0/0
+  egress1:
+    Type: 'AWS::EC2::SecurityGroupEgress'
+    Properties:
+      GroupId: !Ref sgsshhttpfullopen
+      IpProtocol: tcp
+      FromPort: '0'
+      ToPort: '65535'
+      CidrIp: 0.0.0.0/0
+Description: ''
