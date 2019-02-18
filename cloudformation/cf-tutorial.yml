@@ -129,12 +129,12 @@ Resources:
         - Key: Name
           Value: cfn-web-1
       SecurityGroupIds:
-        - !Ref cfnEC2SecurityGroup
+        - !Ref cfnWebSecurityGroup
       KeyName: !Ref KeyPair
 ################################
 # Security Group EC2
 ################################
-  cfnEC2SecurityGroup:
+  cfnWebSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Managed by CloudFormation
@@ -159,7 +159,7 @@ Resources:
 ################################
 # Security Group RDS
 ################################
-  cfnRDSSecurityGroup:
+  cfnDBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Managed by CloudFormation
@@ -171,7 +171,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 3306
           ToPort: 3306
-          SourceSecurityGroupId: !Ref cfnEC2SecurityGroup
+          SourceSecurityGroupId: !Ref cfnWebSecurityGroup
 ################################
 # RDS
 ################################
@@ -186,7 +186,7 @@ Resources:
       PubliclyAccessible: false
       DBSubnetGroupName: !Ref cfnDBSubnetGroup
       VPCSecurityGroups:
-        - !Ref cfnRDSSecurityGroup
+        - !Ref cfnDBSecurityGroup
       # storage parameters
       StorageType: gp2
       AllocatedStorage: 20 
@@ -216,3 +216,50 @@ Resources:
     Properties:
       Family: mysql5.7
       Description: Managed by CloudFormation
+################################
+# ALB
+################################
+  cfnInternetALB: 
+      Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+      Properties: 
+        Name: web-alb
+        Tags: 
+          - Key: Name
+            Value: web-alb
+        Scheme: "internet-facing"
+        SecurityGroups:
+          - !Ref cfnWebSecurityGroup
+        Subnets: 
+          - !Ref cfnPublicSubnet1a
+          - !Ref cfnPublicSubnet1c
+  cfnALBListener: 
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties: 
+      LoadBalancerArn: !Ref cfnInternetALB
+      Port: 80
+      Protocol: HTTP
+      DefaultActions: 
+        - TargetGroupArn: !Ref cfnTargetGroup
+          Type: forward
+  cfnTargetGroup: 
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties: 
+      Name: web-alb-tg
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref cfnVPC
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      HealthCheckTimeoutSeconds: 5
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/"
+      HealthCheckPort: "traffic-port"
+      HealthCheckIntervalSeconds: 10
+      Matcher: 
+        HttpCode: 200
+      Tags: 
+        - Key: Name
+          Value: web-alb-tg
+      Targets: 
+        - Id: !Ref cfnEC2Instance
+          Port: 80
