@@ -13,21 +13,37 @@ SparkleFormation.new(:compute, :provider => :aws) do
     instance_type do
       type 'String'
       default 't2.micro'
-      allowed_values ['t2.micro', 't2.small']
+      allowed_values registry!(:instance_type)
     end
   end
 
-  dynamic!(:ec2_instance, :sparkle) do
+  dynamic!(:ec2_instance, :web) do
     properties do
       image_id ref!(:ami)
       instance_type ref!(:instance_type)
       key_name ref!(:key_name)
+      subnet_id ref!(:public_ec2_subnet)
+    end
+  end
+
+  dynamic!(:ec2_vpc, :my) do
+    properties do
+      cidr_block "10.0.0.0/16"
+    end
+  end
+
+  dynamic!(:ec2_subnet, :public) do
+    properties do
+      vpc_id ref!(:my_ec2_vpc)
+      cidr_block "10.0.10.0/24"
+      map_public_ip_on_launch true
+      availability_zone "ap-northeast-1a"
     end
   end
 
   outputs.sparkle_public_address do
     description 'Compute instance public address'
-    value attr!(:sparkle_ec2_instance, :public_ip)
+    value attr!(:web_ec2_instance, :public_ip)
   end
 
 end
